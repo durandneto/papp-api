@@ -25,15 +25,18 @@ module.exports = function(wagner , passport) {
   var p1 = new Promise(
     function(resolve, reject) {
     console.log('dentro da promisse');       
-          resolve('fora da promisse');
+          resolve('reject fora da promisse');
+          // resolve('fora da promisse');
     });
 
   // definimos o que fazer quando a promise for realizada
-  p1.then(
-    function(val) {
-    console.log(val)
+    p1.then(function(val) {
+      console.log(val)
+    },
+    function (val){
+      console.log('reject',val);
+    });
 
-      });
       var search = {};
       if ( req.body.name ) {
         search.$or = [{
@@ -42,25 +45,47 @@ module.exports = function(wagner , passport) {
       }      
 
       var sort = { created_at: -1 };
-      // User.
-      //   find({
-      //     $text: {
-      //       $search: "text you are searching for"
-      //     }
-      //   },
-      //   {
-      //     score: {
-      //       $meta: "textScore"
-      //     }
-      //   }). 
-      //   limit(1).
-      //   sort(sort).
-      //   exec(handleMany.bind(null, 'users', res));
+      var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
+
+      var columns = [
+      'id'
+      ,'email'
+      ,'name'
+      ,'created_at'
+      ];
+
       User.
         find(search). 
-        limit(1).
-        sort(sort).
-        exec(handleMany.bind(null, 'users', res));
+        limit(limit).
+        skip(skip).
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('users',res,err, result)
+          }
+        );
+    };
+  }));
+ 
+  Api.get('/count', wagner.invoke(function(User) {
+    return function(req, res) {
+
+      var search = {};
+      if ( req.body.name ) {
+        search.$or = [{
+          name: new RegExp( req.body.name , "i" )
+        }];
+      }      
+
+      User.
+        find(search). 
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
     };
   }));
  

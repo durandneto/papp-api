@@ -34,6 +34,7 @@ var userSchema = {
 };
 
 var schema = new mongoose.Schema(userSchema);  
+schema.index({ name: 'text', email: 'text'});
 
 // methods ======================
 // generating a hash
