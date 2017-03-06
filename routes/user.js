@@ -134,7 +134,7 @@ module.exports = function(wagner , passport) {
                       if (err) {
                         handleError(res , err , next);
                       } else {
-                        res.json({tk:newUser.id, user : newUser });
+                        res.json({status:'SUCCESS',tk:newUser.id, user : newUser });
                       }
                   }); 
                 } 
@@ -196,7 +196,7 @@ function handleMany(property, res, error, result) {
 function handleError( res, error , next ) {
   res.
     status(status.INTERNAL_SERVER_ERROR).
-    send({ error: error });
+    send({ status:'ERROR', error: error });
     next();
 
 }
