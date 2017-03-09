@@ -20,22 +20,22 @@ module.exports = function(wagner , passport) {
   Api.use(busboyBodyParser());   
 
   Api.get('/search', wagner.invoke(function(User) {
-    return function(req, res) {
-  // Criamos uma nova promise: prometemos a contagem dessa promise (após aguardar 3s)
-  var p1 = new Promise(
-    function(resolve, reject) {
-    console.log('dentro da promisse');       
-          resolve('reject fora da promisse');
-          // resolve('fora da promisse');
-    });
+      return function(req, res) {
+    // Criamos uma nova promise: prometemos a contagem dessa promise (após aguardar 3s)
+      var p1 = new Promise(
+      function(resolve, reject) {
+      console.log('dentro da promisse');       
+            resolve('reject fora da promisse');
+            // resolve('fora da promisse');
+      });
 
-  // definimos o que fazer quando a promise for realizada
-    p1.then(function(val) {
-      console.log(val)
-    },
-    function (val){
-      console.log('reject',val);
-    });
+    // definimos o que fazer quando a promise for realizada
+      p1.then(function(val) {
+        console.log(val)
+      },
+      function (val){
+        console.log('reject',val);
+      });
 
       var search = {};
       if ( req.body.name ) {
@@ -118,6 +118,16 @@ module.exports = function(wagner , passport) {
   Api.post('/save', wagner.invoke(function( User ) {
     return function(req, res , next) {
       try {
+        var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        var email = req.body.email;
+        var testeEmail = re.test(email);
+
+        if ( !testeEmail ){
+          handleError(res , 'E-mail is not valid' , next);
+        } else if ( !req.body.name ) {
+          handleError(res , 'Name Not Found' , next);
+        }
+        else {
            User.findOne({'email': req.body.email}, function(err, existingUser) {
               // if there are any errors, return the error
               if (err){
@@ -140,6 +150,7 @@ module.exports = function(wagner , passport) {
                 } 
               }
           });
+        }
       } catch ( err ) {
         handleError(res , err , next);
       }
