@@ -38,14 +38,16 @@ module.exports = function(wagner , passport) {
       });
 
       var search = {};
-      if ( req.body.name ) {
+      if ( req.query.name ) {
+        console.log('entrou')
         search.$or = [{
-          name: new RegExp( req.body.name , "i" )
+          name: new RegExp( req.query.name , "i" )
         }];
       }      
 
       var sort = { created_at: -1 };
       var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
       var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
 
       var columns = [
@@ -55,10 +57,13 @@ module.exports = function(wagner , passport) {
       ,'created_at'
       ];
 
+      console.log(search)
+
       User.
         find(search). 
         limit(limit).
         skip(skip).
+        where({is_active:isActive}).
         // sort(sort).
         select(columns.join(' ')).
         exec(
@@ -73,14 +78,15 @@ module.exports = function(wagner , passport) {
     return function(req, res) {
 
       var search = {};
-      if ( req.body.name ) {
+      if ( req.query.name ) {
         search.$or = [{
-          name: new RegExp( req.body.name , "i" )
+          name: new RegExp( req.query.name , "i" )
         }];
       }      
 
       User.
         find(search). 
+        where({is_active:1}).
         count(
           function(err,count){
             handleMany('count',res,err, count)
@@ -91,13 +97,19 @@ module.exports = function(wagner , passport) {
  
   Api.put('/update/', wagner.invoke(function(User) {
     return function(req, res) {
-      if(!req.headers['papp-user-key'])
+      console.log(req.headers)
+      if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
-      var userId = req.headers['papp-user-key'];
+      var userId = req.headers['api-key-papp'];
       var u = {};
       u.name = req.body.name;
       u.gender = req.body.gender;
+
+      if ( req.body.password ){
+         var UserModel = new User(req.body);
+        u.password = UserModel.generateHash(req.body.password);
+      }
 
       User.findOneAndUpdate(
         {_id:userId}
@@ -111,6 +123,27 @@ module.exports = function(wagner , passport) {
           })
           // .populate('concurso2')
           ;
+      });
+    };
+  })); 
+ 
+  Api.delete('/remove/', wagner.invoke(function(User) {
+    return function(req, res) {
+      if(!req.headers['api-key-papp'])
+         throw "USER NOT_FOUND"; 
+
+      var userId = req.headers['api-key-papp'];
+      var u = {};
+      u.is_active = 0;
+      u.updated_at = new Date();
+
+      User.findOneAndUpdate(
+        {_id: userId, is_active: 1}
+        , u
+        ,function(err) {
+          if (err)
+              throw err;
+          res.json({status:'SUCCESS'});
       });
     };
   })); 
@@ -128,7 +161,7 @@ module.exports = function(wagner , passport) {
           handleError(res , 'Name Not Found' , next);
         }
         else {
-           User.findOne({'email': req.body.email}, function(err, existingUser) {
+           User.findOne({'email': req.body.email, is_active: 1}, function(err, existingUser) {
               // if there are any errors, return the error
               if (err){
                 handleError(res , err , next );
