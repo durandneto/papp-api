@@ -19,23 +19,63 @@ module.exports = function(wagner , passport) {
   Api.use(bodyparser.json());
   Api.use(busboyBodyParser());   
 
-  Api.get('/search', wagner.invoke(function(Topic) {
+
+
+  Api.get('/count', wagner.invoke(function(Topic) {
     return function(req, res) {
 
       var search = {};
-      if ( req.body.name ) {
+      if ( req.query.name ) {
         search.$or = [{
-          name: new RegExp( req.body.name , "i" )
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
+
+      Topic.
+        find(search). 
+        where({is_active:1}).
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
+    };
+  }));
+  
+  Api.get('/search', wagner.invoke(function(Topic) {
+    return function(req, res) {
+
+     var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
         }];
       }      
 
       var sort = { created_at: -1 };
+      var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
+      var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
+
+      var columns = [
+      'id'
+      ,'email'
+      ,'name'
+      ,'created_at'
+      ];
+
       Topic.
         find(search). 
-        // limit(1).
-        sort(sort).
-        populate('user').
-        exec(handleMany.bind(null, 'topics', res));
+        limit(limit).
+        skip(skip).
+        where({is_active:isActive}).
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('rows',res,err, result)
+          }
+        );
     };
   }));
  

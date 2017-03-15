@@ -23,24 +23,46 @@ module.exports = function(wagner , passport) {
     return function(req, res) {
 
       var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
 
       var sort = { created_at: -1 };
+      var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
+      var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
+
+      var columns = [
+      'id'
+      ,'email'
+      ,'name'
+      ,'created_at'
+      ];
+
       Language.
         find(search). 
-        // limit(1).
-        sort(sort).
-        //populate('user').
-        exec(handleMany.bind(null, 'languages', res));
+        limit(limit).
+        skip(skip).
+        where({is_active:isActive}).
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('rows',res,err, result)
+          }
+        );
     };
   }));
  
   Api.put('/update/', wagner.invoke(function(Language) {
     return function(req, res) {
-      if(!req.headers['papp-user-key'])
+      if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
       var u = {};
-      var languageId = req.body.language_id;
+      var languageId = req.body.id;
       u.name = req.body.name;
 
       Language.findOneAndUpdate(
@@ -51,9 +73,32 @@ module.exports = function(wagner , passport) {
             throw err;
 
           Language.findOne({_id:languageId},function(err,language){
-            res.json({language:language});
+            res.json({status:'SUCCESS',language:language});
           })
           ;
+      });
+    };
+  })); 
+
+
+  Api.delete('/remove/:id', wagner.invoke(function(Language) {
+    return function(req, res) {
+      if(!req.headers['api-key-papp'])
+         throw "USER NOT_FOUND"; 
+
+      var languageId = req.params.id;
+
+      var u = {};
+      u.is_active = 0;
+      u.updated_at = new Date();
+
+      Language.findOneAndUpdate(
+        {_id: languageId, is_active: 1}
+        , u
+        ,function(err) {
+          if (err)
+              throw err;
+          res.json({status:'SUCCESS'});
       });
     };
   })); 
@@ -61,19 +106,43 @@ module.exports = function(wagner , passport) {
   Api.post('/save', wagner.invoke(function( Language ) {
     return function(req, res , next) {
       try {
-        if(!req.headers['papp-user-key'])
-         throw "USER NOT_FOUND"; 
+        // if(!req.headers['api-key-papp'])
+        //  throw "USER NOT_FOUND"; 
+
         var newLanguage = new Language(req.body);
           newLanguage.save(function(err) {
             if (err) {
               handleError(res , err , next);
             } else {
-              res.json({ language : newLanguage });
+              res.json({ status:'SUCCESS',language : newLanguage });
             }
           }); 
+
       } catch ( err ) {
         handleError(res , err , next);
       }
+    };
+  }));
+
+
+  Api.get('/count', wagner.invoke(function(Language) {
+    return function(req, res) {
+
+      var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
+
+      Language.
+        find(search). 
+        where({is_active:1}).
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
     };
   }));
  

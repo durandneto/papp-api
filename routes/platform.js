@@ -27,9 +27,7 @@ module.exports = function(wagner , passport) {
       var sort = { created_at: -1 };
       Platform.
         find(search). 
-        // limit(1).
         sort(sort).
-        //populate('user').
         exec(handleMany.bind(null, 'platforms', res));
     };
   }));
