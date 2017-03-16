@@ -57,8 +57,6 @@ module.exports = function(wagner , passport) {
       ,'created_at'
       ];
 
-      console.log(search)
-
       User.
         find(search). 
         limit(limit).

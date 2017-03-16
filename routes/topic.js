@@ -41,7 +41,7 @@ module.exports = function(wagner , passport) {
         );
     };
   }));
-  
+
   Api.get('/search', wagner.invoke(function(Topic) {
     return function(req, res) {
 
@@ -62,10 +62,12 @@ module.exports = function(wagner , passport) {
       ,'email'
       ,'name'
       ,'created_at'
+      , 'user'
       ];
 
       Topic.
         find(search). 
+        populate('user').
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
@@ -81,11 +83,12 @@ module.exports = function(wagner , passport) {
  
   Api.put('/update/', wagner.invoke(function(Topic) {
     return function(req, res) {
-      if(!req.headers['papp-user-key'])
+      if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
       var u = {};
-      var topicId = req.body.topic_id;
+      var topicId = req.body.id;
+      u.user = req.body.user;
       u.name = req.body.name;
 
       Topic.findOneAndUpdate(
@@ -95,8 +98,8 @@ module.exports = function(wagner , passport) {
           if (err)
             throw err;
 
-          Topic.findOne({_id:topicId},function(err,topic){
-            res.json({topic:topic});
+          Topic.findOne({_id:topicId},function(err,object){
+            res.json({status:'SUCCESS',row:object});
           })
           ;
       });
@@ -106,12 +109,25 @@ module.exports = function(wagner , passport) {
   Api.post('/save', wagner.invoke(function( Topic ) {
     return function(req, res , next) {
       try {
-        var newTopic = new Topic(req.body);
+
+        var topic = {};
+        topic.user = req.body.user.id;
+        topic.name = req.body.name;
+
+        var newTopic = new Topic(topic);
           newTopic.save(function(err) {
             if (err) {
-              handleError(res , err , next);
+              handleError(res , { status:'ERROR', err } , next);
             } else {
-              res.json({ topic : newTopic });
+              console.log(newTopic.id)
+              Topic.
+                findOne({_id: newTopic.id}). 
+                populate('user').
+                exec(
+                  function(err,result){
+                    res.json({ status:'SUCCESS', row : result });
+                  }
+                );
             }
           }); 
       } catch ( err ) {
@@ -119,11 +135,33 @@ module.exports = function(wagner , passport) {
       }
     };
   }));
+
+  Api.delete('/remove/:id', wagner.invoke(function(Topic) {
+    return function(req, res) {
+      if(!req.headers['api-key-papp'])
+         throw "USER NOT_FOUND"; 
+
+      var topicId = req.params.id;
+
+      var u = {};
+      u.is_active = 0;
+      u.updated_at = new Date();
+
+      Topic.findOneAndUpdate(
+        {_id: topicId, is_active: 1}
+        , u
+        ,function(err) {
+          if (err)
+              throw err;
+          res.json({status:'SUCCESS'});
+      });
+    };
+  })); 
  
   return Api;
 
   } catch ( err ) {
-  console.log( 'geral' , err);
+  console.log( 'geral Topic' , err);
 }
 
 

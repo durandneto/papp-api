@@ -9,6 +9,7 @@ var groupSchema = {
   name: {
     type: String
   }  
+  , is_active: { type: String, default: 1 }
   , user :  {type : mongoose.Schema.ObjectId, ref : 'User'}
   , created_at: { type: Date, default: Date.now }
   , updated_at: { type: Date, default: Date.now }
