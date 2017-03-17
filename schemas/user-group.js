@@ -12,6 +12,7 @@ var groupSchema = {
   , language :  {type : mongoose.Schema.ObjectId, ref : 'Language'}
   , platform :  {type : mongoose.Schema.ObjectId, ref : 'Platform'}
   , user :  {type : mongoose.Schema.ObjectId, ref : 'User'}
+  , is_active: { type: String, default: 1 }
   , created_at: { type: Date, default: Date.now }
   , updated_at: { type: Date, default: Date.now }
 };

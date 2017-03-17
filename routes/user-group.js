@@ -23,11 +23,11 @@ module.exports = function(wagner , passport) {
     return function(req, res) {
 
       try {
-        if(!req.headers['papp-user-key'])
+        if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
        var u = req.body;
-       u.user = req.headers['papp-user-key'];
+       u.user = req.headers['api-key-papp'];
        u.group = req.body.group;
 
         var newRow = new UserJoinedGroup(u);
@@ -61,23 +61,48 @@ module.exports = function(wagner , passport) {
   Api.get('/search', wagner.invoke(function(UserGroup) {
     return function(req, res) {
 
-      var search = {};  
+     var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
 
       var sort = { created_at: -1 };
+      var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
+      var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
+
+      var columns = [
+        'id'
+        , 'email'
+        , 'name'
+        , 'created_at'
+        , 'user'
+        , 'language'
+        , 'platform'
+      ];
+
       UserGroup.
         find(search). 
-        // limit(1).
-        sort(sort).
         populate('user').
-        populate('platform').
         populate('language').
-        exec(handleMany.bind(null, 'groups', res));
+        limit(limit).
+        skip(skip).
+        // where({is_active:isActive}).
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('rows',res,err, result)
+          }
+        );
     };
   }));
  
   Api.put('/update/', wagner.invoke(function(UserGroup) {
     return function(req, res) {
-      if(!req.headers['papp-user-key'])
+      if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
       var u = {};
@@ -104,12 +129,12 @@ module.exports = function(wagner , passport) {
   Api.post('/create', wagner.invoke(function( UserGroup ) {
     return function(req, res , next) {
       try {
-        if(!req.headers['papp-user-key'])
+        if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
        var u = req.body;
-       u.user = req.headers['papp-user-key'];
-
+       u.user = req.headers['api-key-papp'];
+        console.log(u)
         var newUserGroup = new UserGroup(u);
           newUserGroup.save(function(err) {
             if (err) {
@@ -121,6 +146,27 @@ module.exports = function(wagner , passport) {
       } catch ( err ) {
         handleError(res , err , next);
       }
+    };
+  }));
+
+  Api.get('/count', wagner.invoke(function(UserGroup) {
+    return function(req, res) {
+
+      var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
+
+      UserGroup.
+        find(search). 
+        where({is_active:1}).
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
     };
   }));
  
