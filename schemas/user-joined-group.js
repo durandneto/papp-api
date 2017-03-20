@@ -7,7 +7,7 @@ var UserGroup = require('./user-group');
 
 // define the schema for our group model
 var groupSchema = {
-   user :  {type : mongoose.Schema.ObjectId, ref : 'User'}
+   users :  [{type : mongoose.Schema.ObjectId, ref : 'User'}]
   , group :  {type : mongoose.Schema.ObjectId, ref : 'UserGroup'}
   , created_at: { type: Date, default: Date.now }
 };
