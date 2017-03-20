@@ -97,8 +97,7 @@ module.exports = function(wagner , passport) {
         findOne(). 
         limit(limit).
         skip(skip).
-        populate('users').
-        select('users').
+        populate('users', 'id name email').
         where({group:req.params.group}).
         exec( function (err ,result ) {
           var rows = (result && result.users) ? result.users : []
@@ -138,9 +137,9 @@ module.exports = function(wagner , passport) {
 
       UserGroup.
         find(search). 
-        populate('user').
-        populate('language').
-        populate('platform').
+        populate('user', '-_id email').
+        populate('language', '-_id name').
+        populate('platform', '-_id name').
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
@@ -254,6 +253,18 @@ module.exports = function(wagner , passport) {
       });
     };
   })); 
+
+  Api.get('/:group/members/count', wagner.invoke(function(UserJoinedGroup) {
+    return function(req, res) {
+
+      UserJoinedGroup.
+      findOne({group:req.params.group}). 
+      exec( function ( err, result ) {
+        var count = (result && result.users) ? result.users.length : 0;
+        res.json({ status:'SUCCESS', count: count});
+      });
+    };
+  }));
 
   Api.get('/count', wagner.invoke(function(UserGroup) {
     return function(req, res) {

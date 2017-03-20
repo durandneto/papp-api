@@ -61,13 +61,13 @@ module.exports = function(wagner , passport) {
       'id'
       ,'email'
       ,'name'
-      ,'created_at'
       , 'user'
+      ,'created_at'
       ];
 
       Topic.
         find(search). 
-        populate('user').
+        populate('user', '-_id email').
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
