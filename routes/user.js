@@ -11,6 +11,9 @@ var fs = require('fs');
 var path = require('path');
 var mkdirp = require('mkdirp');
 
+var jwt = require('jwt-simple');
+var secret = 'durand-papp';
+
 module.exports = function(wagner , passport) {
   try {
   var Api = express.Router();
@@ -110,7 +113,7 @@ module.exports = function(wagner , passport) {
       }
 
       User.findOneAndUpdate(
-        {_id:userId}
+        {_id:userId, is_active: '1'}
         , u
         ,function(err) {
           if (err)
@@ -145,6 +148,41 @@ module.exports = function(wagner , passport) {
       });
     };
   })); 
+
+  Api.post('/authenticate', wagner.invoke(function( User ) {
+    return function(req, res , next) {
+      try {
+        var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        var email = req.body.email;
+        var testeEmail = re.test(email);
+
+        if ( !testeEmail ){
+          handleError(res , 'E-mail is not valid' , next);
+        } 
+        else {
+
+          var user = new User();
+
+           User.findOne({'email': req.body.email, is_active: '1'}, function(err, existingUser) {
+              // if there are any errors, return the error
+              if (err){
+                handleError(res , err , next );
+              } else { 
+                // check to see if there's already a user with that email
+                if (existingUser && user.validPassword(req.body.password, existingUser.password)) {
+                  var token = jwt.encode(existingUser.id, secret);
+                  res.json({status:'SUCCESS', authenticationToken: token, user: existingUser });
+                } else {
+                  handleError(res , 'User or password invalids' , next);
+                } 
+              }
+          });
+        }
+      } catch ( err ) {
+        handleError(res , err , next);
+      }
+    };
+  }));
 
   Api.post('/save', wagner.invoke(function( User ) {
     return function(req, res , next) {
@@ -236,6 +274,7 @@ function handleMany(property, res, error, result) {
 }
 
 function handleError( res, error , next ) {
+  console.log(error)
   res.
     status(status.INTERNAL_SERVER_ERROR).
     send({ status:'ERROR', error: error });
