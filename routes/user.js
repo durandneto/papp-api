@@ -41,12 +41,7 @@ module.exports = function(wagner , passport) {
       });
 
       var search = {};
-      if ( req.query.name ) {
-        console.log('entrou')
-        search.$or = [{
-          name: new RegExp( req.query.name , "i" )
-        }];
-      }      
+          
 
       var sort = { created_at: -1 };
       var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
@@ -59,20 +54,10 @@ module.exports = function(wagner , passport) {
       ,'created_at'
       ];
 
-      // User.
-      //   find(search). 
-        // limit(limit).
-        // skip(skip).
-        // where({is_active:isActive}).
-      //   // sort(sort).
-        // select(columns.join(' ')).
-        // exec(
-        //   function(err,result){
-        //     handleMany('users',res,err, result)
-        //   }
-        // );
 
-      User.find({$text: {$search: req.query.name}}, {score: {$meta: "textScore"}}).sort({score:{$meta:"textScore"}}).
+
+      if ( req.query.name ) {
+        User.find({$text: {$search: req.query.name}}, {score: {$meta: "textScore"}}).sort({score:{$meta:"textScore"}}).
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
@@ -82,7 +67,22 @@ module.exports = function(wagner , passport) {
             handleMany('users',res,err, result)
           }
         );
+      }  else {
+      User.
+        find(search). 
+        limit(limit).
+        skip(skip).
+        where({is_active:isActive}).
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('users',res,err, result)
+          }
+        );
+      }
     };
+
   }));
  
   Api.get('/count', wagner.invoke(function(User) {
