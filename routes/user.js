@@ -54,18 +54,28 @@ module.exports = function(wagner , passport) {
       var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
 
       var columns = [
-      'id'
-      ,'email'
+       'email' 
       ,'name'
       ,'created_at'
       ];
 
-      User.
-        find(search). 
+      // User.
+      //   find(search). 
+        // limit(limit).
+        // skip(skip).
+        // where({is_active:isActive}).
+      //   // sort(sort).
+        // select(columns.join(' ')).
+        // exec(
+        //   function(err,result){
+        //     handleMany('users',res,err, result)
+        //   }
+        // );
+
+      User.find({$text: {$search: req.query.name}}, {score: {$meta: "textScore"}}).sort({score:{$meta:"textScore"}}).
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
-        // sort(sort).
         select(columns.join(' ')).
         exec(
           function(err,result){
@@ -171,7 +181,7 @@ module.exports = function(wagner , passport) {
                 // check to see if there's already a user with that email
                 if (existingUser && user.validPassword(req.body.password, existingUser.password)) {
                   var token = jwt.encode(existingUser.id, secret);
-                  res.json({status:'SUCCESS', authenticationToken: token, user: existingUser });
+                  res.json({status:'SUCCESS', authenticationToken: token, user : existingUser });
                 } else {
                   handleError(res , 'User or password invalids' , next);
                 } 
