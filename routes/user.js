@@ -87,22 +87,28 @@ module.exports = function(wagner , passport) {
  
   Api.get('/count', wagner.invoke(function(User) {
     return function(req, res) {
-
-      var search = {};
+ 
+      var isActive = '1';
       if ( req.query.name ) {
-        search.$or = [{
-          name: new RegExp( req.query.name , "i" )
-        }];
-      }      
-
-      User.
-        find(search). 
-        where({is_active:1}).
+        User.find({$text: {$search: req.query.name}}, {score: {$meta: "textScore"}}).sort({score:{$meta:"textScore"}}).
+        where({is_active:isActive}).
         count(
           function(err,count){
             handleMany('count',res,err, count)
           }
         );
+      }  else {
+      User.
+        find({}). 
+        where({is_active:isActive}).
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
+      }
+
+
     };
   }));
  
