@@ -23,33 +23,60 @@ module.exports = function(wagner , passport) {
     return function(req, res) {
 
       var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
 
       var sort = { created_at: -1 };
+      var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
+      var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
+      var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
+
+      var columns = [
+      'id'
+      ,'name'
+      ,'created_at'
+      ];
+
       Platform.
         find(search). 
-        sort(sort).
-        exec(handleMany.bind(null, 'platforms', res));
+        // populate('user', '-_id email').
+        limit(limit).
+        skip(skip).
+        where({is_active:isActive}). 
+        // sort(sort).
+        select(columns.join(' ')).
+        exec(
+          function(err,result){
+            handleMany('rows',res,err, result);
+          }
+        );
+
     };
   }));
  
   Api.put('/update/', wagner.invoke(function(Platform) {
     return function(req, res) {
-      if(!req.headers['papp-user-key'])
+      if(!req.headers['api-key-papp'])
          throw "USER NOT_FOUND"; 
 
       var u = {};
-      var platformId = req.body.platform_id;
+      var platformId = req.body.id;
       u.name = req.body.name;
 
       Platform.findOneAndUpdate(
         {_id:platformId}
         , u
-        ,function(err) {
+        ,function(err,p) {
           if (err)
             throw err;
 
+          console.log(p)
+
           Platform.findOne({_id:platformId},function(err,platform){
-            res.json({platform:platform});
+            res.json({status:'SUCCESS',row:platform});
           })
           ;
       });
@@ -72,6 +99,50 @@ module.exports = function(wagner , passport) {
       }
     };
   }));
+
+  Api.get('/count', wagner.invoke(function(Platform) {
+    return function(req, res) {
+
+      var search = {};
+      if ( req.query.name ) {
+        search.$or = [{
+          name: new RegExp( req.query.name , "i" )
+        }];
+      }      
+
+      Platform.
+        find(search). 
+        where({is_active:1}).
+        count(
+          function(err,count){
+            handleMany('count',res,err, count)
+          }
+        );
+    };
+  }));
+
+  
+  Api.delete('/remove/:id', wagner.invoke(function(Platform) {
+    return function(req, res) {
+      if(!req.headers['api-key-papp'])
+         throw "USER NOT_FOUND"; 
+
+      var PlatformId = req.params.id;
+
+      var u = {};
+      u.is_active = 0;
+      u.updated_at = new Date();
+
+      Platform.findOneAndUpdate(
+        {_id: PlatformId, is_active: 1}
+        , u
+        ,function(err) {
+          if (err)
+              throw err;
+          res.json({status:'SUCCESS'});
+      });
+    };
+  })); 
  
   return Api;
 

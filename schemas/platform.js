@@ -6,6 +6,7 @@ var reportTypeSchema = {
   name: {
     type: String
   }
+  , is_active: { type: String, default: 1 }
   , created_at: { type: Date, default: Date.now }
   , updated_at: { type: Date, default: Date.now }
 };

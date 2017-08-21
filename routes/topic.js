@@ -61,13 +61,14 @@ module.exports = function(wagner , passport) {
       'id'
       ,'email'
       ,'name'
+      ,'color'
       , 'user'
       ,'created_at'
       ];
 
       Topic.
         find(search). 
-        populate('user', '-_id email').
+        populate('user', 'id').
         limit(limit).
         skip(skip).
         where({is_active:isActive}).
@@ -90,6 +91,7 @@ module.exports = function(wagner , passport) {
       var topicId = req.body.id;
       u.user = req.body.user;
       u.name = req.body.name;
+      u.color = req.body.color;
 
       Topic.findOneAndUpdate(
         {_id:topicId}
@@ -113,6 +115,8 @@ module.exports = function(wagner , passport) {
         var topic = {};
         topic.user = req.body.user.id;
         topic.name = req.body.name;
+        topic.color = req.body.color;
+
 
         var newTopic = new Topic(topic);
           newTopic.save(function(err) {
@@ -120,6 +124,13 @@ module.exports = function(wagner , passport) {
               handleError(res , { status:'ERROR', err } , next);
             } else {
               console.log(newTopic.id)
+
+              // var file_path = './../files/'+topicId;
+              // save_file(req,'durand',req.body.avatar.file)
+              // var extension = path.extname(req.avatar.file.name).toLowerCase();
+              // var name = req.avatar.file.name.toLowerCase();
+              // console.log(name)
+
               Topic.
                 findOne({_id: newTopic.id}). 
                 populate('user').
@@ -130,6 +141,27 @@ module.exports = function(wagner , passport) {
                 );
             }
           }); 
+      } catch ( err ) {
+        handleError(res , err , next);
+      }
+    };
+  }));
+
+  Api.post('/set-avatar', wagner.invoke(function( Topic ) {
+    return function(req, res , next) {
+      try {
+
+      var topicId = req.body.id;
+
+        
+      var file_path = './files/topic/'+topicId;
+      console.log(req.files.avatar)
+      save_file(req,file_path, req.files.avatar)
+      // save_file(req,'durand',req.body.avatar.file)
+      // var extension = path.extname(req.avatar.file.name).toLowerCase();
+      // var name = req.avatar.file.name.toLowerCase();
+ 
+ 
       } catch ( err ) {
         handleError(res , err , next);
       }
@@ -166,6 +198,28 @@ module.exports = function(wagner , passport) {
 
 
 };
+
+function save_file(req,file_path, data){
+  
+  var fs = require('fs');
+  var extension = path.extname(data.name).toLowerCase();
+
+  if(!fs.existsSync(file_path)){
+     mkdirp(file_path, function(err){
+       if(err){ 
+         console.log(err);
+          if (err) throw err;
+       }
+        fs.writeFile(file_path+'/avatar'+ extension,data.data, (err) => {
+          console.log('save file 2', data.preview)
+        });
+     });   
+  }else{
+    fs.writeFile(file_path+'/avatar'+ extension,data.data, (err) => {
+      console.log('save file 2', data.preview)
+    });
+  } 
+}
 
 
   /**

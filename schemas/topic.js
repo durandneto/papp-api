@@ -6,9 +6,8 @@ var User = require('./user');
 
 // define the schema for our group model
 var groupSchema = {
-  name: {
-    type: String
-  }  
+  name: {type: String}  
+  , color: {type: String}  
   , is_active: { type: String, default: 1 }
   , user :  {type : mongoose.Schema.ObjectId, ref : 'User'}
   , created_at: { type: Date, default: Date.now }

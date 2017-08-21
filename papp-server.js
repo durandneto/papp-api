@@ -25,6 +25,8 @@ var whitelist = [
     'http://127.0.0.1:8080',
     'http://127.0.0.1:3000',
     'http://admin.papp.im',
+    'http://papp.im',
+    'papp.im',
     'admin.papp.im'
 ];
 var corsOptions = {
@@ -44,7 +46,8 @@ app.use(passport.initialize());
 app.use(passport.session()); // persistent login sessions
 
 app.use(flash()); // use connect-flash for flash messages stored in session
-app.use(express.static('files'));
+// app.use(express.static('files'));
+app.use('/files', express.static('files'));
 
 app.use('/api/v1/user', require('./routes/user')(wagner , passport));
 app.use('/api/v1/user/group', require('./routes/user-group')(wagner , passport));

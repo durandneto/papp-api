@@ -84,6 +84,42 @@ module.exports = function(wagner , passport) {
     };
   }));
  
+  Api.get('/:group/state', wagner.invoke(function(UserJoinedGroup, UserGroup) {
+    return function(req, res) {
+
+       if(!req.headers['api-key-papp']) 
+         throw "USER NOT_FOUND"; 
+
+       let joined = false;
+       let owner = false;
+      try {
+
+       UserJoinedGroup.
+        find({user:req.headers['api-key-papp']}).
+        where({is_active:1}).
+        count(
+          function(err,countRow){
+            joined = (countRow) ? true :  false
+                UserGroup.
+                findOne({_id:req.params.group}). 
+                where({is_active:'1', user:req.headers['api-key-papp']}).
+                exec(
+                  function(err,result){
+                    console.log(result.id)
+                    owner = (result.id) ? true :  false
+                    handleOne('state',res,err,  {joined:joined,owner:owner})
+                  }
+                );
+
+          }
+        );
+      } catch (e) {
+         handleOne('state',res,e, {joined:false,owner:false})
+      }
+
+
+    };
+  }));
   Api.get('/:group/members', wagner.invoke(function(UserJoinedGroup) {
     return function(req, res) {
 
@@ -92,7 +128,6 @@ module.exports = function(wagner , passport) {
       var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
 
       var sort = { created_at: -1 };
-      console.log({group:req.params.group});
       UserJoinedGroup.
         findOne(). 
         limit(limit).
@@ -110,6 +145,7 @@ module.exports = function(wagner , passport) {
   Api.get('/search', wagner.invoke(function(UserGroup) {
     return function(req, res) {
 
+     
      var search = {};
       if ( req.query.name ) {
         search.$or = [{
@@ -117,39 +153,81 @@ module.exports = function(wagner , passport) {
         }];
       }      
 
+
       var sort = { created_at: -1 };
       var limit = (req.query.limit) ? parseInt(req.query.limit) : 10; 
       var isActive = (req.query.active) ? parseInt(req.query.active) : 1; 
       var skip = (req.query.page) ? ( parseInt(req.query.page) - 1) * limit : 0; 
 
+      console.log('search user group user id ', req.headers['api-key-papp']);
+
       var columns = [
         'id'
         , 'email'
         , 'name'
+        , 'description'
+        , 'location'
+        , 'topics'
         , 'created_at'
         , 'user'
-        , 'language'
+        , 'link'
+        , 'userLanguage'
         , 'platform'
       ];
 
       try {
-
-
-      UserGroup.
-        find(search). 
-        populate('user', '-_id email').
-        populate('language', '-_id name').
-        populate('platform', '-_id name').
+ 
+      if ( req.query.name ) {
+        UserGroup.find({$text: {$search: req.query.name}}, {score: {$meta: "textScore"}}).sort({score:{$meta:"textScore"}}).
         limit(limit).
         skip(skip).
+        populate('user', '-_id email').
+        populate('userLanguage', '-_id name').
+        populate('platform', '-_id name').
         where({is_active:isActive}).
-        // sort(sort).
         select(columns.join(' ')).
         exec(
           function(err,result){
-            handleMany('rows',res,err, result)
+
+            console.log('result', result.length)
+            if (result.length > 0 ){
+              handleMany('rows',res,err, result)
+            } else {
+               UserGroup.
+                find(search). 
+                limit(limit).
+                skip(skip).
+                populate('user', '-_id email').
+                populate('userLanguage', '-_id name').
+                populate('platform', '-_id name').
+                where({is_active:isActive}).
+                select(columns.join(' ')).
+                exec(
+                  function(err,result){
+                    handleMany('rows',res,err, result)
+                  }
+                );
+            }
           }
         );
+      }  else {
+        UserGroup.
+          find(search). 
+          limit(limit).
+          skip(skip).
+          populate('user', '-_id email').
+          populate('userLanguage', '-_id name').
+          populate('platform', '-_id name').
+          where({is_active:isActive}).
+          // sort(sort).
+          select(columns.join(' ')).
+          exec(
+            function(err,result){
+              handleMany('rows',res,err, result)
+            }
+          );
+        }
+   
       } catch (e){
         console.log(e)   
       }
@@ -164,9 +242,11 @@ module.exports = function(wagner , passport) {
       var u = {};
       var groupId = req.body.id;
       u.name = req.body.name;
-      u.language = req.body.language;
+      u.userLanguage = req.body.userLanguage;
       u.platform = req.body.platform;
       u.user = req.body.user;
+      u.link = req.body.link;
+      u.description = req.body.description;
 
       UserGroup.findOneAndUpdate(
         {_id:groupId}
@@ -179,7 +259,7 @@ module.exports = function(wagner , passport) {
             res.json({ status:'SUCCESS', group:group});
           })
           .populate('user')
-          .populate('language')
+          .populate('userLanguage')
           .populate('platform')
           ;
       });
@@ -199,15 +279,16 @@ module.exports = function(wagner , passport) {
           case !req.body.platform.id:
             handleError(res , 'Platform Not Found' , next);
             break;
-          case !req.body.language.id:
+          case !req.body.userLanguage.id:
             handleError(res , 'Language Not Found' , next);
             break;
           default:
             var u = req.body;
             u.user = req.body.user.id;
-            u.language = req.body.language.id;
+            u.userLanguage = req.body.userLanguage.id;
             u.platform = req.body.platform.id;
-            console.log(u);
+            u.link = req.body.link;
+            u.description = req.body.description;
             var newUserGroup = new UserGroup(u);
             newUserGroup.save(function(err) {
             if (err) {
@@ -217,7 +298,7 @@ module.exports = function(wagner , passport) {
                 findOne({_id: newUserGroup.id}). 
                 populate('user').
                 populate('platform').
-                populate('language').
+                populate('userLanguage').
                 exec(
                   function(err,result){
                     res.json({ status:'SUCCESS', row : result });
@@ -277,7 +358,7 @@ module.exports = function(wagner , passport) {
       }      
 
       UserGroup.
-        find(search). 
+        find(search).
         where({is_active:1}).
         count(
           function(err,count){
